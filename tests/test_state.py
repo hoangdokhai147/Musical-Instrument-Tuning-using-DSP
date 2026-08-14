@@ -144,9 +144,9 @@ def test_tuner_owns_no_state_itself():
     assert not stateful, f"Tuner tự giữ state: {stateful}"
 
 
-def test_bad_input_does_not_touch_state():
+def test_bad_input_raises_and_does_not_touch_state():
     """NaN là lỗi KỸ THUẬT, không phải 'audio hợp lệ mà không có cao độ'.
-    Nó phải không đụng tới tracker, và không đầu độc đuôi FIR."""
+    Nó phải NÉM LỖI, không đụng tracker, và không đầu độc đuôi FIR."""
     tu = Tuner()
     tu.push(_tone(110.0, tu.cfg.buf_len))
     tail_before = tu.fir._tail.copy()
@@ -155,7 +155,12 @@ def test_bad_input_does_not_touch_state():
 
     bad = _tone(110.0, tu.cfg.buf_len).copy()
     bad[100] = np.nan
-    assert tu.push(bad) == [{"state": "BAD_INPUT"}]
+    try:
+        tu.push(bad)
+    except ValueError as e:
+        assert "NaN" in str(e)
+    else:
+        raise AssertionError("buffer chứa NaN phải ném ValueError")
 
     assert np.array_equal(tu.fir._tail, tail_before), "NaN đã lọt vào đuôi FIR"
     assert tu.tracker._miss == miss_before

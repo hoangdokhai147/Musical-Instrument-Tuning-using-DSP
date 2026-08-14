@@ -42,6 +42,10 @@ class ChromaticResolver:
     def __init__(self, a4=440.0):
         self.a4 = a4
 
+    def name_of(self, midi):
+        """Tên nốt KHÔNG kèm octave — UI render hai phần ở hai cỡ chữ."""
+        return NOTE_NAMES[int(midi) % 12]
+
     def resolve(self, f0):
         m = int(round(f0_to_midi(f0, self.a4)))
         f_target = midi_to_freq(m, self.a4)

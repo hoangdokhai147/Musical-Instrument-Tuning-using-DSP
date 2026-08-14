@@ -109,10 +109,10 @@ def test_tuner_invariant_to_chunk_size():
         got = _feed(x, sizes)
         assert len(got) == len(ref), f"{sizes}: {len(got)} kết quả vs {len(ref)}"
         for k, (a, b) in enumerate(zip(got, ref)):
-            assert a["state"] == b["state"], f"{sizes} frame {k}: state khác"
-            if a["state"] == "DETECTING":
-                assert a["f0"] == b["f0"], \
-                    f"{sizes} frame {k}: f0 {a['f0']} vs {b['f0']}"
+            assert a.status == b.status, f"{sizes} frame {k}: status khác"
+            if a.frequency_hz is not None:
+                assert a.frequency_hz == b.frequency_hz, \
+                    f"{sizes} frame {k}: f0 {a.frequency_hz} vs {b.frequency_hz}"
 
 
 def test_tuner_invariant_to_varying_chunk_size():
@@ -125,9 +125,9 @@ def test_tuner_invariant_to_varying_chunk_size():
         got = _feed(x, sizes)
         assert len(got) == len(ref), f"lần {trial}: {len(got)} vs {len(ref)}"
         for k, (a, b) in enumerate(zip(got, ref)):
-            assert a["state"] == b["state"]
-            if a["state"] == "DETECTING":
-                assert a["f0"] == b["f0"], f"lần {trial} frame {k}"
+            assert a.status == b.status
+            if a.frequency_hz is not None:
+                assert a.frequency_hz == b.frequency_hz, f"lần {trial} frame {k}"
 
 
 def test_first_result_needs_a_full_frame():
@@ -155,7 +155,12 @@ def test_bad_input_does_not_enter_framer():
     before = tu.framer.total_in
     bad = _tone(110.0, 2000).copy()
     bad[5] = np.inf
-    assert tu.push(bad) == [{"state": "BAD_INPUT"}]
+    try:
+        tu.push(bad)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("buffer chứa Inf phải ném ValueError")
     assert tu.framer.total_in == before, "chunk hỏng đã lọt vào framer"
 
 

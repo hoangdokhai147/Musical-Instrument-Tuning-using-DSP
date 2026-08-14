@@ -49,7 +49,13 @@ class Config:
     ema_slow: float    = 0.10    # alpha khi ổn định
     ema_fast: float    = 0.90    # alpha khi đang vặn khoá
     ema_jump_c: float  = 25.0    # cent. Vượt ngưỡng này -> chuyển sang ema_fast.
-    in_tune_c: float   = 5.0     # dung sai hiển thị "đúng cao độ"
+    in_tune_c: float   = 5.0     # vào IN_TUNE khi |cent| <= giá trị này
+
+    # --- lớp HIỂN THỊ: thẩm mỹ, không phải DSP. Đổi thoải mái, không ảnh hưởng độ đo. ---
+    in_tune_release_c: float = 8.0    # chỉ RA khỏi IN_TUNE khi vượt — chống chớp đèn
+    note_hyst_c: float       = 15.0   # giữ nốt cũ tới 50+15 cent — chống nhấp nháy tên nốt
+    acquire_frames: int      = 5      # số frame ổn định trước khi ACQUIRING -> LOCKED
+    display_hold_ms: float   = 800.0  # giữ số đọc bao lâu sau khi mất tín hiệu
 
     # (A) VÌ SAO W = 4096?
     #     Ràng buộc dưới: d(τ) chỉ có nghĩa khi cửa sổ tham chiếu dài hơn chu kỳ dài nhất.
@@ -159,4 +165,12 @@ class Config:
              f"cần 0 < ema_slow <= ema_fast <= 1, nhận {self.ema_slow} / {self.ema_fast}")
         need(self.ema_jump_c > 0, f"ema_jump_c ({self.ema_jump_c}) phải dương")
         need(self.in_tune_c > 0, f"in_tune_c ({self.in_tune_c}) phải dương")
+        need(self.in_tune_release_c >= self.in_tune_c,
+             f"in_tune_release_c ({self.in_tune_release_c}) phải >= in_tune_c "
+             f"({self.in_tune_c}), nếu không hysteresis đảo chiều và đèn chớp còn tệ hơn")
+        need(self.note_hyst_c >= 0, f"note_hyst_c ({self.note_hyst_c}) không được âm")
+        need(self.note_hyst_c < 50, f"note_hyst_c ({self.note_hyst_c}) phải < 50 — "
+             f"lớn hơn nửa cung thì không bao giờ đổi được nốt")
+        need(self.acquire_frames >= 1, f"acquire_frames ({self.acquire_frames}) phải >= 1")
+        need(self.display_hold_ms >= 0, f"display_hold_ms ({self.display_hold_ms}) không được âm")
         need(self.a4 > 0, f"a4 ({self.a4}) phải dương")

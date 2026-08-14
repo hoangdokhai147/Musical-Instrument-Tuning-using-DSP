@@ -145,16 +145,19 @@ def measure_stream_files(cfg, rels):
         if sr != cfg.fs:
             continue
         tu = Tuner(cfg)
-        states, f0s = [], []
+        states, f0s, notes = [], [], []
         for i in range(0, len(x), 1024):
-            for o in tu.push(x[i:i + 1024]):
-                states.append(o["state"])
-                f0s.append(o.get("f0"))
+            for r in tu.push(x[i:i + 1024]):
+                states.append(r.status.value)
+                f0s.append(r.frequency_hz)
+                notes.append(r.midi_note)
         det = [v for v in f0s if v is not None]
         out[rel] = {
             "n_frames": len(states),
-            "states": "".join(s[0] for s in states),   # D/S/U/B — gọn và đọc được
+            # L=LOCKED A=ACQUIRING H=HOLDING U=UNSTABLE S=SILENT
+            "states": "".join(s[0] for s in states),
             "f0": f0s,
+            "midi": notes,
             "summary": {
                 "n_detecting": len(det),
                 "median_f0": float(np.median(det)) if det else None,
@@ -271,6 +274,9 @@ def check(verbose):
         a = cur.get(rel)
         if a is None:
             fails.append((f"stream/{rel}", "missing", "có", "thiếu file")); continue
+        if a.get("midi") != b.get("midi"):
+            n = sum(1 for p_, q in zip(a.get("midi", []), b.get("midi", [])) if p_ != q)
+            fails.append((f"stream/{rel}", "midi", "khớp", f"{n} frame khác"))
         if a["states"] != b["states"]:
             n = sum(1 for p, q in zip(a["states"], b["states"]) if p != q)
             n += abs(len(a["states"]) - len(b["states"]))
