@@ -1,1 +1,9 @@
 __pycache__/
+.DS_Store
+
+# Bản thu kiểm thử — 56 MB.
+# LƯU Ý: tests/golden/vectors.json tham chiếu 25 file trong này. Trên máy không có
+# recordings/, lệnh `python tests/golden_vectors.py check` sẽ BÁO FAIL (cố ý — nó
+# không bỏ qua âm thầm). Muốn verify đầy đủ ở nơi khác thì phải bỏ dòng dưới đây
+# và commit cả bộ, hoặc dùng git-lfs.
+recordings/

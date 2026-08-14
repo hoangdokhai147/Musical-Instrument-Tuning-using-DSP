@@ -20,7 +20,7 @@ import numpy as np
 class Config:
     fs_in        = 48000      # sample rate đầu vào (Hz)
     decim        = 4          # hệ số hạ mẫu -> fs_eff = 12000 Hz
-    f_low        = 60.0       # biên dưới bandpass (Hz)
+    f_low        = 50.0       # biên dưới bandpass (Hz) - hạ từ 60 để không cắt E2=82Hz
     f_high       = 1500.0     # biên trên bandpass (Hz) - đồng thời là anti-alias
     fir_taps     = 127        # bậc FIR (lẻ -> pha tuyến tính, đối xứng)
     W            = 2048       # cửa sổ tương quan CỐ ĐỊNH (mẫu, tại fs_eff)
@@ -226,17 +226,23 @@ def find_period(dp, k_min, k_max, thresh):
         k += 1
     return int(k_min + np.argmin(dp[k_min:k_max + 1]))
 
-def octave_guard(dp, k, k_max, ratio=1.15):
+def octave_guard(dp, k, k_max, deeper=0.8):
     """
-    Bảo vệ chống chọn nhầm T/2, T/3 (octave-too-high) khi f0 thật yếu:
-    nếu 2k, 3k vẫn nằm trong dải và d' ở đó KHÔNG tệ hơn nhiều -> ưu tiên chu kỳ dài hơn.
-    Đây là lớp phòng thủ phụ; bandpass low-pass mới là tuyến phòng thủ chính.
+    Bảo vệ chống octave-too-high (chọn nhầm T/2, T/3) khi f0 thật yếu.
+
+    LƯU Ý QUAN TRỌNG (rút ra từ verify): bandpass low-pass + CMNDF đã là tuyến
+    phòng thủ chính và đủ mạnh trong hầu hết trường hợp. Lớp guard này CHỈ nên
+    can thiệp khi có bằng chứng RÕ RỆT rằng chu kỳ dài hơn khớp TỐT HƠN HẲN -
+    tức d'(m*k) phải SÂU HƠN d'(k) một biên đáng kể (dp[m*k] < deeper*dp[k]),
+    không phải chỉ "không tệ hơn nhiều". Ngưỡng lỏng (ratio=1.15) ở bản cũ đã
+    tự gây lỗi octave tại 150Hz -> đây là bản đã siết.
     """
     best = k
+    best_val = dp[k]
     for m in (2, 3):
         km = k * m
-        if km <= k_max and dp[km] < dp[k] * ratio:
-            best = km
+        if km <= k_max and dp[km] < best_val * deeper:
+            best, best_val = km, dp[km]
     return best
 
 
