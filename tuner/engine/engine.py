@@ -7,6 +7,7 @@ from tuner.core.detector import PitchDetector
 from tuner.core.filters import StreamingFIR, design_lowpass
 from tuner.core.music import ChromaticResolver
 from tuner.core.tracking import NoteTracker
+from tuner.engine.framer import Framer
 
 
 # =============================================================================
@@ -41,6 +42,7 @@ class Tuner:
         self.resolver = ChromaticResolver(self.cfg.a4)
         self.fir = StreamingFIR(
             design_lowpass(self.cfg.fs, self.cfg.fc_lp, self.cfg.lp_taps))
+        self.framer = Framer(self.cfg.buf_len, self.cfg.hop)
         self.tracker = NoteTracker(self.cfg)
 
     def reset_note(self):
@@ -51,22 +53,38 @@ class Tuner:
         """Quên cả luồng audio. Gọi khi mở/đóng stream hoặc đổi thiết bị vào."""
         self.tracker.reset()
         self.fir.reset()
+        self.framer.reset()
 
     def _drop(self, state, **extra):
         """Một frame không dùng được."""
         self.tracker.miss()
         return {"state": state, **extra}
 
-    def process(self, raw):
-        """raw: buffer thô @fs, đủ dài để sau lọc còn >= cfg.buf_len mẫu."""
-        # Vào trước cả bộ lọc: NaN/Inf sẽ đầu độc đuôi FIR và mọi frame sau đó.
-        # Đây là lỗi KỸ THUẬT (buffer hỏng), không phải "audio hợp lệ mà không có
-        # cao độ" — nên nó không đụng tới tracker.
-        if not np.all(np.isfinite(raw)):
-            return {"state": "BAD_INPUT"}
+    def push(self, chunk):
+        """
+        Nạp audio thô @fs, chunk dài BẤT KỲ (kể cả đổi giữa các lần gọi).
+        Trả list gồm 0, 1 hoặc nhiều kết quả — tuỳ chunk chứa được mấy hop.
 
-        x = self.fir.process(np.asarray(raw, dtype=np.float64))
+        Vì sao trả LIST chứ không phải một kết quả: số kết quả phụ thuộc kích
+        thước chunk, thứ mà hệ điều hành quyết định chứ không phải ứng dụng.
+        Chunk 256 mẫu sinh 0 kết quả ba lần rồi 1 kết quả; chunk 8192 sinh 8.
+        Trả list làm điều đó hiển nhiên, thay vì giấu sau một hàm get_result()
+        có thể lặng lẽ trả về dữ liệu cũ.
+        """
+        # Chặn TRƯỚC cả bộ lọc: NaN/Inf sẽ đầu độc đuôi FIR rồi lan sang mọi frame
+        # sau đó. Đây là lỗi KỸ THUẬT (buffer hỏng), không phải "audio hợp lệ mà
+        # không có cao độ" — nên nó không đụng tới tracker.
+        if not np.all(np.isfinite(chunk)):
+            return [{"state": "BAD_INPUT"}]
 
+        # LỌC TRƯỚC, CẮT FRAME SAU. Bộ lọc phải thấy luồng đúng một lần, liên tục;
+        # nếu cắt frame trước thì nó thấy dữ liệu chồng lấn và state hỏng. Xem
+        # framer.py để biết chuyện đó đã gây ra sai số 122.5% biên độ thế nào.
+        y = self.fir.process(np.asarray(chunk, dtype=np.float64))
+        return [self._process_frame(f) for f in self.framer.push(y)]
+
+    def _process_frame(self, x):
+        """Một frame đã lọc, đúng cfg.buf_len mẫu."""
         if float(np.sqrt(np.mean(x ** 2))) < self.cfg.rms_gate:
             return self._drop("SILENT")
 

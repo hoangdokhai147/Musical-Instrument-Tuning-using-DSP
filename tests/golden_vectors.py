@@ -119,9 +119,23 @@ def measure_detect_files(cfg, rels):
 
 
 def measure_stream_files(cfg, rels):
-    """Chạy Tuner ĐẦY ĐỦ theo hop trên trọn file — bắt cả state machine, smoothing,
-    hold, overlap-save. Lưu chuỗi từng frame chứ không chỉ số tổng hợp: tổng hợp có
-    thể giữ nguyên trong khi từng frame đã đổi."""
+    """Chạy Tuner ĐẦY ĐỦ trên trọn file — bắt cả state machine, smoothing, hold,
+    overlap-save, framing. Lưu chuỗi từng frame chứ không chỉ số tổng hợp: tổng
+    hợp có thể giữ nguyên trong khi từng frame đã đổi.
+
+    Nạp qua push() với chunk 1024 mẫu — đúng cách ứng dụng thật sẽ dùng.
+
+    BẢN ĐẦU (bước 0-3) nạp cửa sổ CHỒNG LẤN dài buf_len vào một FIR CÓ STATE:
+        for i in range(0, len(x)-buf_len, hop): tu.process(x[i:i+buf_len])
+    Mỗi lần nạp 4836 mẫu nhưng chỉ tiến 1024, nên 3812 mẫu bị lọc lại, và đuôi
+    FIR được nối vào từ một vị trí không liền mạch. Đo được: 126 mẫu đầu mỗi
+    frame sai (đúng bằng len(h)-1), sai số đỉnh 122.5% biên độ, 464/465 frame
+    lệch, f0 lệch tới 12.2 cent.
+
+    Đó là lỗi của HARNESS, không phải của engine — các phép đo chất lượng đã công
+    bố (jitter 0.37-4.93 cent, octave 0.10%) đều lọc cả file một lần rồi mới cắt
+    frame, tức đúng. Nhưng vector đóng băng ở bước 0 thì có dính, nên bước 4 phải
+    freeze lại."""
     out = {}
     for rel in rels:
         p = RECORDINGS / rel
@@ -132,10 +146,10 @@ def measure_stream_files(cfg, rels):
             continue
         tu = Tuner(cfg)
         states, f0s = [], []
-        for i in range(0, len(x) - cfg.buf_len, cfg.hop):
-            o = tu.process(x[i:i + cfg.buf_len])
-            states.append(o["state"])
-            f0s.append(o.get("f0"))
+        for i in range(0, len(x), 1024):
+            for o in tu.push(x[i:i + 1024]):
+                states.append(o["state"])
+                f0s.append(o.get("f0"))
         det = [v for v in f0s if v is not None]
         out[rel] = {
             "n_frames": len(states),

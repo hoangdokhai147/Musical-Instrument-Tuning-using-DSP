@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tuner.core.config import Config
 from tuner.core.filters import StreamingFIR, design_lowpass
 from tuner.core.tracking import NoteTracker
+from tuner.engine.framer import Framer
 from tuner.engine.engine import Tuner
 
 
@@ -114,7 +115,7 @@ def test_hold_zero_forgets_immediately():
 def test_reset_note_leaves_filter_tail_alone():
     """Điều mà bước 3 khẳng định. Trước đây reset() xoá cả hai."""
     tu = Tuner()
-    tu.process(_tone(110.0, tu.cfg.buf_len))
+    tu.push(_tone(110.0, tu.cfg.buf_len))
     tail_before = tu.fir._tail.copy()
 
     tu.reset_note()
@@ -125,7 +126,7 @@ def test_reset_note_leaves_filter_tail_alone():
 
 def test_reset_stream_clears_both():
     tu = Tuner()
-    tu.process(_tone(110.0, tu.cfg.buf_len))
+    tu.push(_tone(110.0, tu.cfg.buf_len))
     tu.reset_stream()
     assert np.all(tu.fir._tail == 0)
     assert len(tu.tracker.median.buf) == 0 and tu.tracker.ema.y is None
@@ -135,9 +136,9 @@ def test_tuner_owns_no_state_itself():
     """Tuner chỉ điều phối. Mọi state phải nằm trong lớp sở hữu nó, để câu hỏi
     'cái này reset lúc nào' luôn có một chỗ trả lời duy nhất."""
     tu = Tuner()
-    tu.process(_tone(110.0, tu.cfg.buf_len))
+    tu.push(_tone(110.0, tu.cfg.buf_len))
     owned = {k for k, v in vars(tu).items()
-             if not isinstance(v, (Config, StreamingFIR, NoteTracker))
+             if not isinstance(v, (Config, StreamingFIR, NoteTracker, Framer))
              and type(v).__module__.startswith("tuner")}
     stateful = {k for k, v in vars(tu).items() if k.startswith("_")}
     assert not stateful, f"Tuner tự giữ state: {stateful}"
@@ -147,14 +148,14 @@ def test_bad_input_does_not_touch_state():
     """NaN là lỗi KỸ THUẬT, không phải 'audio hợp lệ mà không có cao độ'.
     Nó phải không đụng tới tracker, và không đầu độc đuôi FIR."""
     tu = Tuner()
-    tu.process(_tone(110.0, tu.cfg.buf_len))
+    tu.push(_tone(110.0, tu.cfg.buf_len))
     tail_before = tu.fir._tail.copy()
     miss_before = tu.tracker._miss
     buf_before = list(tu.tracker.median.buf)
 
     bad = _tone(110.0, tu.cfg.buf_len).copy()
     bad[100] = np.nan
-    assert tu.process(bad)["state"] == "BAD_INPUT"
+    assert tu.push(bad) == [{"state": "BAD_INPUT"}]
 
     assert np.array_equal(tu.fir._tail, tail_before), "NaN đã lọt vào đuôi FIR"
     assert tu.tracker._miss == miss_before
