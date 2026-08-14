@@ -251,12 +251,7 @@ recordings/           32 file kiểm thử (56 MB)
   hard/ env/ reject/    ca khó, môi trường ồn, ca phải bị từ chối
 console_check.py      chạy engine với audio thật, in ra terminal
 record_session.py     thu bộ dữ liệu kiểm thử
-dsp_core.py           engine BẢN CŨ — giữ để đối chiếu, KHÔNG dùng
 ```
-
-`dsp_core.py` giữ lại vì báo cáo có tham chiếu tới nó. Nó chứa ba lỗi đã được ghi
-nhận (`octave_guard` so sánh tỉ số của hai số ~1e-16, bandpass có biên dưới không
-tồn tại, nội suy sai đối tượng). Bản đang dùng là `tuner/`.
 
 ---
 
