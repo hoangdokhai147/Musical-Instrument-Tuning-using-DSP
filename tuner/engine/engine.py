@@ -1,12 +1,12 @@
-"""Tuner: ghép toàn bộ một frame. Nơi duy nhất giữ state của LUỒNG."""
+"""Tuner: ghép một frame. Điều phối thuần — không tự giữ state nào."""
 
 import numpy as np
 
 from tuner.core.config import Config
 from tuner.core.detector import PitchDetector
-from tuner.core.filters import design_lowpass
+from tuner.core.filters import StreamingFIR, design_lowpass
 from tuner.core.music import ChromaticResolver
-from tuner.core.tracking import AdaptiveEMA, MedianFilter
+from tuner.core.tracking import NoteTracker
 
 
 # =============================================================================
@@ -15,15 +15,21 @@ from tuner.core.tracking import AdaptiveEMA, MedianFilter
 
 class Tuner:
     """
-    HAI LOẠI STATE, HAI VÒNG ĐỜI KHÁC NHAU — bản cũ trộn chúng vào một reset():
+    HAI LOẠI STATE, HAI VÒNG ĐỜI KHÁC NHAU — mỗi loại giờ có một lớp sở hữu nó:
 
-      state của LUỒNG  : _tail (đuôi FIR). Thuộc về luồng audio, chỉ xoá khi
-                         mở/đóng stream hoặc đổi thiết bị.
-      state của NỐT    : median, ema. Thuộc về nốt đang chơi, xoá khi người dùng
-                         thật sự ngừng chơi — KHÔNG phải khi một frame lẻ tụt
-                         dưới gate lúc nốt đang tắt dần.
+      StreamingFIR   state của LUỒNG. Đuôi bộ lọc. Chỉ xoá khi mở/đóng stream
+                     hoặc đổi thiết bị vào.
+      NoteTracker    state của NỐT. median, EMA, bộ đếm frame hụt. Xoá khi người
+                     dùng thật sự ngừng chơi — KHÔNG phải khi một frame lẻ tụt
+                     dưới gate lúc nốt đang tắt dần.
+      PitchDetector  KHÔNG state. Cùng frame vào thì luôn cùng kết quả ra.
 
-    Trộn hai thứ này chính là nguyên nhân của jitter 25 cent (xem Config mục C3).
+    Bản đầu giữ cả hai loại state ngay trong Tuner và có một reset() xoá sạch cả
+    hai. Đó không phải lỗi thẩm mỹ: nó là nguyên nhân của jitter 25 cent, vì mỗi
+    frame tụt gate lại xoá luôn bộ đệm median. Xem Config mục C3.
+
+    Bản thân Tuner giờ không có thuộc tính state nào — hỏi "cái này reset lúc nào"
+    thì câu trả lời luôn nằm ở lớp sở hữu nó, không nằm ở đây.
     """
 
     def __init__(self, cfg: Config = None):
@@ -33,45 +39,33 @@ class Tuner:
                             f"Có phải bạn viết Config thay vì Config()?")
         self.det = PitchDetector(self.cfg)
         self.resolver = ChromaticResolver(self.cfg.a4)
-        self.median = MedianFilter(self.cfg.med_size)
-        self.ema = AdaptiveEMA(self.cfg.ema_slow, self.cfg.ema_fast, self.cfg.ema_jump_c)
-        self.lp = design_lowpass(self.cfg.fs, self.cfg.fc_lp, self.cfg.lp_taps)
-        self._tail = np.zeros(len(self.lp) - 1)   # state LUỒNG
-        self._miss = 0                            # số frame liên tiếp không dùng được
-
-    def _filter(self, x):
-        """
-        Overlap-save: nối 126 mẫu đuôi của block trước vào đầu block này, rồi
-        dùng mode='valid' để chỉ giữ phần KHÔNG bị zero-pad.
-        Kết quả khớp CHÍNH XÁC với lọc liên tục — bản cũ dùng mode='same' không
-        có state nên mỗi biên block có 63 mẫu hỏng (đo được: sai số đỉnh 39.9%).
-        """
-        xx = np.concatenate([self._tail, x])
-        self._tail = xx[-(len(self.lp) - 1):]
-        return np.convolve(xx, self.lp, mode="valid")
+        self.fir = StreamingFIR(
+            design_lowpass(self.cfg.fs, self.cfg.fc_lp, self.cfg.lp_taps))
+        self.tracker = NoteTracker(self.cfg)
 
     def reset_note(self):
         """Quên nốt đang theo dõi. Gọi khi im lặng đủ lâu, hoặc khi đổi nhạc cụ."""
-        self.median.reset(); self.ema.reset(); self._miss = 0
+        self.tracker.reset()
 
     def reset_stream(self):
         """Quên cả luồng audio. Gọi khi mở/đóng stream hoặc đổi thiết bị vào."""
-        self.reset_note()
-        self._tail = np.zeros(len(self.lp) - 1)
+        self.tracker.reset()
+        self.fir.reset()
 
     def _drop(self, state, **extra):
-        """Một frame không dùng được. Chỉ quên nốt sau khi mất tín hiệu ĐỦ LÂU."""
-        self._miss += 1
-        if self._miss > self.cfg.hold_frames:
-            self.median.reset(); self.ema.reset()
+        """Một frame không dùng được."""
+        self.tracker.miss()
         return {"state": state, **extra}
 
     def process(self, raw):
         """raw: buffer thô @fs, đủ dài để sau lọc còn >= cfg.buf_len mẫu."""
+        # Vào trước cả bộ lọc: NaN/Inf sẽ đầu độc đuôi FIR và mọi frame sau đó.
+        # Đây là lỗi KỸ THUẬT (buffer hỏng), không phải "audio hợp lệ mà không có
+        # cao độ" — nên nó không đụng tới tracker.
         if not np.all(np.isfinite(raw)):
             return {"state": "BAD_INPUT"}
 
-        x = self._filter(np.asarray(raw, dtype=np.float64))
+        x = self.fir.process(np.asarray(raw, dtype=np.float64))
 
         if float(np.sqrt(np.mean(x ** 2))) < self.cfg.rms_gate:
             return self._drop("SILENT")
@@ -83,8 +77,7 @@ class Tuner:
             # f0 tìm được không có năng lượng trong phổ -> là bội chu kỳ, không phải nốt
             return self._drop("UNRELIABLE", confidence=res.confidence, subharmonic=True)
 
-        self._miss = 0
-        f0 = self.ema.push(self.median.push(res.f0))   # làm mượt trên f0, TRƯỚC khi map
+        f0 = self.tracker.push(res.f0)          # làm mượt trên f0, TRƯỚC khi map
         note = self.resolver.resolve(f0)
         c = note["cents"]
         return {

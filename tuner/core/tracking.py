@@ -5,6 +5,7 @@ Trộn hai thứ đó chính là nguyên nhân của jitter 25 cent; xem Config 
 
 import numpy as np
 
+from tuner.core.config import Config
 from tuner.core.music import cents
 
 
@@ -53,3 +54,46 @@ class AdaptiveEMA:
         return self.y
     def reset(self):
         self.y = None
+
+class NoteTracker:
+    """
+    Toàn bộ state của MỘT NỐT: median, EMA, và bộ đếm frame hụt.
+
+    Gộp ba thứ này vào một lớp vì chúng có CÙNG vòng đời — sinh ra khi bắt đầu
+    theo dõi một nốt, chết đi khi người dùng thật sự ngừng chơi. Trước đây chúng
+    nằm rải trong Tuner cạnh state của luồng audio, và chính sự lẫn lộn đó khiến
+    reset() xoá nhầm cả hai.
+
+    HAI CÁCH GỌI, TƯƠNG ỨNG HAI LOẠI FRAME:
+        push(f0)  frame dùng được  -> làm mượt và trả về f0 đã mượt
+        miss()    frame không dùng được (im lặng, confidence thấp, subharmonic)
+
+    miss() KHÔNG quên nốt ngay. Nốt đang tắt dần nhấp nháy quanh ngưỡng gate, và
+    quên ngay ở frame hụt đầu tiên khiến bộ đệm median không bao giờ đầy nổi —
+    median=15 khi đó hành xử y như median=1. Đo được: quên ngay -> jitter p95 tệ
+    nhất 25.3 cent; chờ hold_frames rồi mới quên -> 4.93 cent. Xem Config mục C3.
+    """
+
+    def __init__(self, cfg: Config):
+        self.median = MedianFilter(cfg.med_size)
+        self.ema = AdaptiveEMA(cfg.ema_slow, cfg.ema_fast, cfg.ema_jump_c)
+        self.hold_frames = cfg.hold_frames
+        self._miss = 0
+
+    def push(self, f0):
+        """Frame dùng được. Trả f0 đã làm mượt."""
+        self._miss = 0
+        return self.ema.push(self.median.push(f0))
+
+    def miss(self):
+        """Frame không dùng được. Chỉ quên nốt sau khi mất tín hiệu ĐỦ LÂU."""
+        self._miss += 1
+        if self._miss > self.hold_frames:
+            self.median.reset()
+            self.ema.reset()
+
+    def reset(self):
+        """Quên hẳn nốt đang theo dõi."""
+        self.median.reset()
+        self.ema.reset()
+        self._miss = 0
