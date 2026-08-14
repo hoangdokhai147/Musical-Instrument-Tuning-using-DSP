@@ -201,7 +201,12 @@ def check_fundamental(x, f, sr):
 # KIỂM TRA CHẤT LƯỢNG SAU MỖI LẦN THU
 # =============================================================================
 
-RMS_GATE_DBFS = -40.0        # bằng cfg.rms_gate = 0.01 của dsp_simple.py
+# Ngưỡng gate LẤY THẲNG TỪ ENGINE, không chép lại.
+# Bản trước hardcode -40 dBFS rồi engine đổi sang 0.005 (-46.02 dBFS), thành ra
+# script kiểm tra khắt khe hơn engine thật mà không ai biết. Hai nguồn sự thật cho
+# cùng một con số là lỗi chờ xảy ra; ở đây chỉ có một.
+from tuner.core.config import Config as _EngineConfig
+RMS_GATE_DBFS = 20.0 * np.log10(_EngineConfig.rms_gate)
 MIN_USABLE_PCT = 30.0        # ngưỡng cho các take CẦN tín hiệu liên tục
 
 # Chỉ các take dùng để ĐO CENT mới cần tín hiệu liên tục. Các take còn lại CỐ Ý có

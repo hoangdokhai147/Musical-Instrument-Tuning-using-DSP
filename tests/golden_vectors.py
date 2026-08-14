@@ -35,15 +35,16 @@ sys.path.insert(0, str(PROJ))
 
 # ---------------------------------------------------------------------------
 # ĐIỂM NỐI DUY NHẤT TỚI ENGINE.
-# Refactor sẽ tách dsp_simple.py thành core/yin.py, core/filters.py, ... Khi đó
-# CHỈ SỬA KHỐI NÀY, không đụng phần còn lại của file. Nếu phải sửa chỗ khác thì
-# nghĩa là refactor đã làm đổi API công khai, và đó là thông tin đáng biết.
+# Khi cấu trúc engine đổi, CHỈ SỬA KHỐI NÀY. Nếu phải sửa chỗ khác trong file thì
+# nghĩa là API công khai đã đổi, và đó là thông tin đáng biết.
+#
+# Bước 1 (tách dsp_simple.py -> gói tuner/): chỉ khối này thay đổi. Bốn tên dưới
+# đây là toàn bộ bề mặt mà bộ test chạm tới.
 # ---------------------------------------------------------------------------
-import dsp_simple as E
-Config          = E.Config
-PitchDetector   = E.PitchDetector
-Tuner           = E.Tuner
-design_lowpass  = E.design_lowpass
+from tuner.core.config import Config
+from tuner.core.detector import PitchDetector
+from tuner.core.filters import design_lowpass
+from tuner.engine.engine import Tuner
 
 VECTORS = HERE / "golden" / "vectors.json"
 RECORDINGS = PROJ / "recordings"
@@ -186,7 +187,7 @@ def build():
     print("  [3/3] Tuner đầy đủ theo hop trên 25 bản thu...", flush=True)
     strm = measure_stream_files(cfg, ALL_REAL)
     print(f"        {len(strm)} file  ({time.time()-t0:.0f}s)", flush=True)
-    src = (PROJ / "dsp_simple.py").read_bytes()
+    src = b"".join(sorted(p.read_bytes() for p in (PROJ / "tuner").rglob("*.py")))
     return {
         "meta": {
             "created": datetime.now().isoformat(timespec="seconds"),
