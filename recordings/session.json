@@ -1,0 +1,123 @@
+{
+  "recorded_at": "2026-08-14T02:56:23",
+  "device_index": 1,
+  "device_name": "Micrô MacBook Air",
+  "device_native_samplerate": 96000.0,
+  "samplerate": 48000,
+  "channels": 1,
+  "dtype_captured": "float32",
+  "file_subtype": "PCM_24",
+  "processing": "none (PortAudio/CoreAudio raw, no AGC/NR/normalize)",
+  "takes": [
+    {
+      "name": "guitar_E2_open",
+      "group": "steady",
+      "seconds": 10,
+      "peak": 0.056700028479099274,
+      "peak_dbfs": -24.92833445942139,
+      "rms": 0.011462632566690445,
+      "rms_dbfs": -38.81431257252486,
+      "clipped_samples": 0,
+      "usable_pct": 36.68341708542713
+    },
+    {
+      "name": "guitar_A2_open",
+      "group": "steady",
+      "seconds": 10,
+      "peak": 0.09838799387216568,
+      "peak_dbfs": -20.14115789177854,
+      "rms": 0.018655505031347275,
+      "rms_dbfs": -34.58385978975764,
+      "clipped_samples": 0,
+      "usable_pct": 85.92964824120602
+    },
+    {
+      "name": "guitar_D3_open",
+      "group": "steady",
+      "seconds": 10,
+      "peak": 0.04540733993053436,
+      "peak_dbfs": -26.857478787053775,
+      "rms": 0.01134354155510664,
+      "rms_dbfs": -38.90502667303446,
+      "clipped_samples": 0,
+      "usable_pct": 53.768844221105525
+    },
+    {
+      "name": "guitar_G3_open",
+      "group": "steady",
+      "seconds": 10,
+      "peak": 0.20869986712932587,
+      "peak_dbfs": -13.609556548640029,
+      "rms": 0.018817557021975517,
+      "rms_dbfs": -34.508735185382974,
+      "clipped_samples": 0,
+      "usable_pct": 30.15075376884422
+    },
+    {
+      "name": "guitar_B3_open",
+      "group": "steady",
+      "seconds": 10,
+      "peak": 0.09282879531383514,
+      "peak_dbfs": -20.646345711379436,
+      "rms": 0.012804804369807243,
+      "rms_dbfs": -37.8525410448282,
+      "clipped_samples": 0,
+      "usable_pct": 40.7035175879397
+    },
+    {
+      "name": "guitar_E4_open",
+      "group": "steady",
+      "seconds": 10,
+      "peak": 0.05741496384143829,
+      "peak_dbfs": -24.819498086945146,
+      "rms": 0.009505250491201878,
+      "rms_dbfs": -40.44072867431205,
+      "clipped_samples": 0,
+      "usable_pct": 32.1608040201005
+    },
+    {
+      "name": "guitar_A2_flat30",
+      "group": "steady",
+      "seconds": 10,
+      "peak": 0.14313296973705292,
+      "peak_dbfs": -16.885206356858905,
+      "rms": 0.0270531103014946,
+      "rms_dbfs": -31.355655935271656,
+      "clipped_samples": 0,
+      "usable_pct": 89.9497487437186
+    },
+    {
+      "name": "guitar_notechange",
+      "group": "hard",
+      "seconds": 20,
+      "peak": 0.28439581394195557,
+      "peak_dbfs": -10.921536006615407,
+      "rms": 0.030429959297180176,
+      "rms_dbfs": -30.333972570991023,
+      "clipped_samples": 0,
+      "usable_pct": 63.40852130325815
+    },
+    {
+      "name": "guitar_E2_noisy",
+      "group": "env",
+      "seconds": 15,
+      "peak": 0.07209472358226776,
+      "peak_dbfs": -22.841930379108874,
+      "rms": 0.01370180118829012,
+      "rms_dbfs": -37.264446766773446,
+      "clipped_samples": 0,
+      "usable_pct": 44.481605351170565
+    }
+  ],
+  "skipped": [],
+  "guitar_type": "TODO: acoustic-steel | classical-nylon | electric",
+  "reference_tuner": "TODO: tên app",
+  "string_offsets_cents": {
+    "E2": null,
+    "A2": null,
+    "D3": null,
+    "G3": null,
+    "B3": null,
+    "E4": null
+  }
+}
