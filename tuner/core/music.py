@@ -47,8 +47,3 @@ class ChromaticResolver:
         f_target = midi_to_freq(m, self.a4)
         return {"name": midi_to_name(m), "midi": m,
                 "target": f_target, "cents": cents(f0, f_target)}
-
-
-# =============================================================================
-# 5. HẬU XỬ LÝ — median rồi EMA, chạy trên f0 TRƯỚC khi map sang nốt
-# =============================================================================

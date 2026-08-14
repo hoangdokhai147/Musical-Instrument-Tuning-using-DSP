@@ -27,7 +27,10 @@ class Tuner:
     """
 
     def __init__(self, cfg: Config = None):
-        self.cfg = cfg or Config()
+        self.cfg = cfg if cfg is not None else Config()
+        if not isinstance(self.cfg, Config):
+            raise TypeError(f"Cần một INSTANCE của Config, nhận {cfg!r}. "
+                            f"Có phải bạn viết Config thay vì Config()?")
         self.det = PitchDetector(self.cfg)
         self.resolver = ChromaticResolver(self.cfg.a4)
         self.median = MedianFilter(self.cfg.med_size)
@@ -96,20 +99,3 @@ class Tuner:
                        else ("LOW" if c < 0 else "HIGH")),
             "confidence": res.confidence,
         }
-
-
-# =============================================================================
-# 7. PHỔ CHO GUI — chỗ duy nhất FFT thực sự cần thiết
-# =============================================================================
-# FFT tự cài (radix-2 DIT) giữ nguyên từ dsp_core.py. Nó KHÔNG còn nằm trong
-# đường pitch nữa, nên một lỗi ở đây không thể làm sai số đọc — và ngược lại,
-# nó chạy được ở tốc độ khung hình chậm hơn (ví dụ 10 fps) mà không ảnh hưởng gì.
-#
-# Ở ĐÂY thì cửa sổ Hann là ĐÚNG và cần thiết — ngược hẳn với YIN:
-#   * FFT giả định tín hiệu tuần hoàn ngoài khung. Chỗ nối đầu-cuối không khớp
-#     tạo bậc nhảy, và bậc nhảy trải năng lượng ra mọi bin (spectral leakage).
-#     Hann đưa hai đầu về 0 nên không có bậc nhảy.
-#   * YIN thì KHÔNG được cửa sổ hoá: d(τ) so sánh x[j] với x[j+τ]. Nhân w[j] vào
-#     khiến hai mẫu được so chịu hai trọng số khác nhau (w[j] ≠ w[j+τ]), tạo sai
-#     khác giả TĂNG theo τ — tức thiên vị lag ngắn, tức gây lỗi octave-too-high.
-#     Cửa sổ hoá không chỉ thừa với YIN, nó chủ động có hại.

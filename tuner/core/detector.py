@@ -19,6 +19,13 @@ class PitchResult:
 
 class PitchDetector:
     def __init__(self, cfg: Config):
+        # Truyền CLASS thay vì INSTANCE là nhầm lẫn dễ mắc, và nếu không chặn ở đây
+        # thì nó nổ tận trong phép toán với thông báo vô nghĩa:
+        #   TypeError: unsupported operand type(s) for /: 'property' and 'float'
+        # (vì Config.tau_min trên class là đối tượng property, không phải số).
+        if not isinstance(cfg, Config):
+            raise TypeError(f"Cần một INSTANCE của Config, nhận {cfg!r}. "
+                            f"Có phải bạn viết Config thay vì Config()?")
         self.cfg = cfg
 
     def detect(self, x):
@@ -39,8 +46,3 @@ class PitchDetector:
         # conf đo mức TUẦN HOÀN, KHÔNG đo "đúng octave" — một subharmonic vẫn thực sự
         # tuần hoàn nên vẫn có conf cao. Đó là lý do cần thêm kiểm chứng phổ độc lập.
         return PitchResult(f0, conf, tau_star, subharmonic_db(x, f0, cfg.fs))
-
-
-# =============================================================================
-# 4. NỐT & CENT — chromatic, không giới hạn ở dây buông nào
-# =============================================================================

@@ -28,9 +28,3 @@ def design_lowpass(fs, fc, numtaps):
     m = np.arange(numtaps) - (numtaps - 1) / 2.0
     h = 2 * (fc / fs) * np.sinc(2 * (fc / fs) * m) * np.hamming(numtaps)
     return h / h.sum()
-
-
-# =============================================================================
-# 2. YIN — bốn bước, mỗi bước một công thức
-#    de Cheveigné & Kawahara (2002), "YIN, a fundamental frequency estimator"
-# =============================================================================
