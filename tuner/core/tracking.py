@@ -1,6 +1,5 @@
 """
 Làm mượt f0. Đây là state của NỐT — vòng đời khác với state của LUỒNG (đuôi FIR).
-Trộn hai thứ đó chính là nguyên nhân của jitter 25 cent; xem Config mục C3.
 """
 
 import numpy as np

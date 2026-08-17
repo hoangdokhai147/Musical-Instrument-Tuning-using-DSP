@@ -4,7 +4,7 @@ import numpy as np
 
 
 # =============================================================================
-# 1. FIR LOWPASS — window method (Proakis Ch 10)
+# 1. FIR LOWPASS — window method
 # =============================================================================
 
 def design_lowpass(fs, fc, numtaps):

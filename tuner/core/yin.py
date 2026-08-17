@@ -10,8 +10,7 @@ import numpy as np
 
 
 # =============================================================================
-# 2. YIN — bốn bước, mỗi bước một công thức
-#    de Cheveigné & Kawahara (2002), "YIN, a fundamental frequency estimator"
+# 2. YIN — de Cheveigné & Kawahara (2002), "YIN, a fundamental frequency estimator"
 # =============================================================================
 
 def difference_function(x, W, tau_max):
@@ -46,8 +45,7 @@ def cmndf(d):
     Mẫu số là trung bình tích luỹ — nó lớn dần theo τ, nên chia cho nó sẽ PHẠT
     các lag lớn và ưu tiên lag nhỏ. Kết quả: trong số các bội của chu kỳ thật
     (nơi d đều ≈ 0), d' nhỏ nhất tại BỘI NHỎ NHẤT = chu kỳ thật.
-    Đây chính là cơ chế chống lỗi subharmonic, và nó hoạt động tốt tới mức
-    một "octave guard" bổ sung là thừa (đã đo trên 600 ca khó).
+    Đây chính là cơ chế chống lỗi subharmonic
     """
     dp = np.ones_like(d)
     run = 0.0
@@ -90,7 +88,7 @@ def parabolic_interp(y, k):
     VÌ SAO CẦN: chu kỳ thật hầu như không bao giờ là số nguyên mẫu. Ở 220 Hz với
     fs=48 kHz, một mẫu lag = 5.4 cent — không nội suy thì sai số tới ±2.7 cent.
 
-    NỘI SUY TRÊN d(τ), KHÔNG PHẢI d'(τ) — đây là khác biệt then chốt so với bản cũ.
+    NỘI SUY TRÊN d(τ), KHÔNG PHẢI d'(τ).
     d'(τ) = d(τ) · τ/(trung bình tích luỹ) là d nhân một hàm TĂNG theo τ. Phép nhân
     đó kéo nhánh phải của parabol lên nhiều hơn nhánh trái, làm đỉnh dịch sang trái,
     tức τ nhỏ hơn, tức f0 CAO hơn. Đo được: bias +0.28 cent trung bình, tăng tới
@@ -108,11 +106,6 @@ def parabolic_interp(y, k):
     if den <= 0:
         return float(k)
     return k + max(-0.5, min(0.5, 0.5 * (a - c) / den))
-
-
-# =============================================================================
-# 3. PITCH DETECTOR — ghép 4 bước YIN, trả f0 liên tục
-# =============================================================================
 
 
 # =============================================================================
@@ -140,8 +133,7 @@ def subharmonic_db(x, f0, fs, _cache={}):
 
     GHI CHÚ HIỆU NĂNG (đo được, sửa lại ước tính ban đầu của tôi): chi phí KHÔNG
     phải ở số phép nhân-cộng (~14.5k, tức 0.5% so với difference_function) mà ở
-    np.exp phức và np.hanning. Cache cửa sổ đưa 0.43 ms -> ~0.15 ms. Bản port sang
-    Dart nên dùng đệ quy Goertzel thật (2 phép nhân/mẫu, không cần exp).
+    np.exp phức và np.hanning. Cache cửa sổ đưa 0.43 ms -> ~0.15 ms.
     """
     n_ = len(x)
     w = _cache.get(n_)
